@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Lock, User, LogIn, AlertCircle } from 'lucide-react';
+import { Lock, User, LogIn, AlertCircle, Shield, KeyRound, Info } from 'lucide-react';
+import { supabase, isSupabaseConfigured } from '../supabaseClient';
 
 interface LoginScreenProps {
   onLogin: () => void;
@@ -11,20 +12,34 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
 
-    // Simulate a brief, satisfying credential validation delay for realism
-    setTimeout(() => {
-      if (username === 'admin' && password === 'admin1337') {
-        onLogin();
-      } else {
-        setError('Username atau password salah! Hubungi kepala galian atau admin utama.');
+    if (isSupabaseConfigured && supabase) {
+      try {
+        // Melakukan autentikasi aman 100% real-time dengan Supabase Auth (Email & Password)
+        const { error: authError } = await supabase.auth.signInWithPassword({
+          email: username.trim(),
+          password: password,
+        });
+
+        if (authError) {
+          setError(`Gagal masuk: ${authError.message}. Salah password nya bang.`);
+          setIsLoading(false);
+        } else {
+          // Sukses Autentikasi Supabase
+          onLogin();
+        }
+      } catch (err: any) {
+        setError(`Kesalahan koneksi Supabase: ${err.message || 'Gagal terhubung'}`);
         setIsLoading(false);
       }
-    }, 450);
+    } else {
+      setError('Kritis: Masih salah juga bang.');
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -45,15 +60,34 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
           </div>
           
           <h1 className="text-white text-2xl font-extrabold tracking-tight">Inventory</h1>
-          <p className="text-slate-400 text-xs mt-1.5 uppercase tracking-widest font-semibold">Sistem Manajemen Gudang & Logistik</p>
+          <p className="text-slate-400 text-xs mt-1.5 uppercase tracking-widest font-semibold">Sistem Manajemen Inventory</p>
         </div>
 
         {/* Form Container */}
         <div className="p-8 space-y-6">
           <div className="space-y-1">
             <h2 className="text-lg font-bold text-slate-800">Masuk ke Dashboard</h2>
-            <p className="text-slate-500 text-xs text-balance">Gunakan akun administrator untuk mengakses panel stok barang dan laporan margin real-time.</p>
+            <p className="text-slate-500 text-xs text-balance">Gunakan akun administrator untuk mengakses panel.</p>
           </div>
+
+          {/* Status Keamanan Supabase */}
+          {isSupabaseConfigured ? (
+            <div className="bg-emerald-50 border border-emerald-250/20 rounded-xl p-3 flex items-start gap-2.5">
+              <Shield className="w-4 h-4 text-emerald-650 shrink-0 mt-0.5" />
+              <div className="text-[11px] text-emerald-800">
+                <span className="font-bold block">Proteksi Aktif</span>
+                <span className="text-emerald-700">Password diproses menggunakan standar enkripsi.</span>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-amber-50 border border-amber-250/20 rounded-xl p-3 flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="text-[11px] text-amber-800">
+                <span className="font-bold block text-amber-900">Mode Demo Aktif (Tidak Aman untuk Prod)</span>
+                <span className="text-amber-700">Kredensial demo di bawah terpaksa tertulis langsung di file React client-side (bisa di-inspect via Ctrl+U). Sambungkan Supabase Anda agar login beralih otomatis ke Cloud Auth terenkripsi.</span>
+              </div>
+            </div>
+          )}
 
           {error && (
             <div className="p-3 bg-red-50 border border-red-150 rounded-xl text-red-800 text-xs flex items-start gap-2.5 animate-in fade-in slide-in-from-top-1">
@@ -63,10 +97,11 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Username Input */}
+            {/* Username / Email Input */}
             <div className="space-y-1.5">
-              <label className="block text-slate-700 text-xs font-semibold uppercase tracking-wider" htmlFor="username">
-                Username
+              <label className="block text-slate-700 text-xs font-bold uppercase tracking-wider flex items-center justify-between" htmlFor="username">
+                <span>{isSupabaseConfigured ? 'Email Admin (Supabase)' : 'Username (Demo)'}</span>
+                {isSupabaseConfigured && <span className="text-[9px] text-emerald-600 lowercase bg-emerald-50 px-1.5 py-0.5 rounded font-normal">supabase auth</span>}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
@@ -75,9 +110,9 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                 <input
                   id="username"
                   name="username"
-                  type="text"
+                  type={isSupabaseConfigured ? "email" : "text"}
                   required
-                  placeholder="Masukkan username"
+                  placeholder={isSupabaseConfigured ? "admin@smith-inventory.com" : "Masukkan username"}
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition"
@@ -87,7 +122,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
 
             {/* Password Input */}
             <div className="space-y-1.5">
-              <label className="block text-slate-700 text-xs font-semibold uppercase tracking-wider" htmlFor="password">
+              <label className="block text-slate-700 text-xs font-bold uppercase tracking-wider mr-1" htmlFor="password">
                 Password
               </label>
               <div className="relative">
@@ -118,7 +153,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
               ) : (
                 <>
                   <LogIn className="w-4 h-4" />
-                  <span>Masuk Aplikasi</span>
+                  <span>{isSupabaseConfigured ? 'Masuk dengan Supabase Secure' : 'Masuk Demo Aplikasi'}</span>
                 </>
               )}
             </button>
@@ -126,15 +161,27 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
 
           {/* Prompt info */}
           <div className="pt-2 text-center">
-            <code className="text-[10px] text-slate-400 bg-slate-100/80 px-2 py-1 rounded">
-              Hint: admin :: admin1337
-            </code>
+            {isSupabaseConfigured ? (
+              <div className="bg-slate-50 rounded-xl p-3 border border-slate-150 text-[10px] text-slate-500 flex items-start gap-2 text-left leading-relaxed">
+                <Info className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Keamanan Aktif:</strong> Silakan daftarkan atau gunakan email admin <strong>Authentication &gt; Users</strong>. Kredensial hardcoded demo telah dinonaktifkan sepenuhnya.
+                </span>
+              </div>
+            ) : (
+              <div className="bg-amber-50 rounded-xl p-3 border border-amber-200 text-[10px] text-amber-800 flex items-start gap-2 text-left leading-relaxed">
+                <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Konfigurasi Diperlukan:</strong>.
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Footer */}
         <div className="px-8 py-4 bg-slate-50 border-t border-slate-100 text-center text-[11px] text-slate-400">
-          Inventory Manajemen Gudang &copy; {new Date().getFullYear()}
+          smith &copy; {new Date().getFullYear()}
         </div>
       </div>
     </div>
