@@ -1,0 +1,6 @@
+{
+  "name": "Manajemen Inventaris Gudang",
+  "description": "Aplikasi manajemen inventaris gudang responsif yang dilengkapi notifikasi stok otomatis, perhitungan HPP & margin, pencatatan bahan packing, penjualan, dan dashboard grafik real-time.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
